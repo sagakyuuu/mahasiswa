@@ -1,28 +1,36 @@
 package main
 
 import (
-	"fmt"
+	"cmp"
+	"log/slog"
+	"net/http"
 	"os"
 
-	"github.com/gofiber/fiber/v2"
-	"github.com/joho/godotenv"
+	"github.com/gin-gonic/gin"
+
+	sloggin "github.com/samber/slog-gin"
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 
-	app := fiber.New()
-	api := app.Group("/api/v1")
+	gin.SetMode(gin.ReleaseMode)
 
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("Error loading .env file")
-	}
+	r := gin.New()
 
-	api.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Hello, World!")
+	r.Use(sloggin.New(logger))
+	r.Use(gin.Recovery())
+
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"message": "Hello world!",
+			"status":  http.StatusOK,
+		})
 	})
 
-	fmt.Println("Server is running on port", os.Getenv("PORT"))
-	app.Listen(":" + os.Getenv("PORT"))
+	port := cmp.Or(os.Getenv("PORT"), "8080")
 
+	logger.Info("Server starting", slog.String("port", port))
+
+	r.Run((":" + port))
 }
